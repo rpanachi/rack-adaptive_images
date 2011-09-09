@@ -1,28 +1,36 @@
 require 'rack/request'
 require 'rack/response'
+require 'mime/types'
 
 class Application
+
+  def initialize
+    @root = File.expand_path(File.dirname(__FILE__))
+  end
 
   def call(env)
 
     request = Rack::Request.new(env)
     response = Rack::Response.new
+    path = Rack::Utils.unescape(env['REQUEST_PATH'])
 
-    if request.env["REQUEST_URI"] == "/"
+    #index
+    if path == "/"
       response.write "<title>Sample Application</title>"
       response.write "<h1>Adaptative Images Sample</h1>"
       response.write "<img src=\"/images/sample.jpg\"/>"
-    elsif file = get_static_file(request)
-      response.write file.to_s
+      response.finish
+
+    #static
+    elsif File.exists?(filename = File.join(@root, "public", path))
+      [200, {"Content-Type" => MIME::Types.of(filename).to_s}, File.read(filename)]
+
+    #not found
     else
-      response.write "NOT FOUND"
+      response.write "404"
+      response.finish
     end
 
-    response.finish
   end
 
-  def get_static_file(request)
-    filepath = File.join(File.dirname(__FILE__), "public", request.env["REQUEST_URI"])
-    File.open(filepath) if File.exists?(filepath)
-  end
 end
